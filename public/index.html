@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sky Brawl</title>
+<style>
+  :root { --panel:#1b1038e6; --accent:#ff9f1c; --accent2:#ff4d6d; --ink:#fff; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#1b1038; color:var(--ink);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif; user-select:none; }
+  canvas#c { position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+  .hidden { display:none !important; }
+
+  .screen { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px;
+    background:radial-gradient(ellipse at center, #1b103866 0%, #1b1038cc 100%); }
+  .card { background:var(--panel); border:4px solid #fff; border-radius:24px; padding:26px 30px;
+    box-shadow:0 8px 0 #0006, 0 20px 60px #0008; text-align:center; max-width:94vw; }
+  h1 { margin:0 0 4px; font-size:clamp(38px,6vw,64px); letter-spacing:2px; color:var(--accent);
+    -webkit-text-stroke:3px #2a0f4a; paint-order:stroke fill; text-shadow:0 5px 0 #2a0f4a; }
+  .tag { margin:0 0 16px; opacity:.8; }
+  .row { display:flex; gap:10px; align-items:center; justify-content:center; margin:10px 0; flex-wrap:wrap; }
+  input[type=text] { font:inherit; font-size:18px; font-weight:700; padding:10px 14px; border-radius:12px;
+    border:3px solid #fff; background:#2d1a55; color:#fff; outline:none; text-align:center; width:210px; user-select:text; }
+  input[type=text]:focus { border-color:var(--accent); }
+  #code { width:110px; letter-spacing:6px; text-transform:uppercase; }
+  button { font:inherit; font-size:18px; font-weight:800; padding:11px 22px; border-radius:14px; cursor:pointer;
+    border:3px solid #fff; color:#fff; background:var(--accent2); box-shadow:0 5px 0 #7a1630; transition:transform .06s, box-shadow .06s; }
+  button:hover { filter:brightness(1.1); }
+  button:active { transform:translateY(4px); box-shadow:0 1px 0 #7a1630; }
+  button:disabled { opacity:.6; cursor:default; }
+  button.alt { background:#4a2f86; box-shadow:0 5px 0 #231245; }
+  button.alt:active { box-shadow:0 1px 0 #231245; }
+  button.arrow { padding:8px 16px; font-size:22px; }
+  #preview { width:260px; height:320px; }
+  #skinName { font-size:24px; font-weight:900; min-width:110px; }
+  .err { color:#ffb3c0; min-height:22px; font-weight:700; }
+  .help { margin-top:12px; font-size:14px; opacity:.85; line-height:1.7; }
+  kbd { background:#fff; color:#2a0f4a; border-radius:6px; padding:1px 7px; font-weight:800; font-size:13px; }
+  #roomCode { font-size:clamp(56px,10vw,110px); font-weight:900; letter-spacing:12px; color:var(--accent);
+    -webkit-text-stroke:3px #2a0f4a; paint-order:stroke fill; margin:6px 0; user-select:text; }
+  #roomLink { font-size:14px; opacity:.8; word-break:break-all; user-select:text; }
+
+  #hud { position:fixed; inset:0; pointer-events:none; }
+  #hud button { pointer-events:auto; }
+  .bars { position:absolute; top:14px; left:50%; transform:translateX(-50%); width:min(1100px,94vw);
+    display:flex; align-items:flex-start; gap:16px; }
+  .side { flex:1; min-width:0; }
+  .side .name { font-weight:900; font-size:20px; text-shadow:0 2px 0 #000a; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .right { text-align:right; }
+  .bar { position:relative; height:28px; background:#1a1030cc; border:3px solid #fff; border-radius:15px; overflow:hidden; box-shadow:0 3px 0 #0006; }
+  .fill, .trail { position:absolute; top:0; bottom:0; left:0; width:100%; }
+  .right .fill, .right .trail { left:auto; right:0; }
+  .fill { background:linear-gradient(#8dff86,#27c93f); transition:width .12s; }
+  .fill.low { background:linear-gradient(#ffb36b,#ff4d3d); }
+  .trail { background:#ff5252; transition:width .6s .35s; }
+  .pips { display:flex; gap:6px; margin-top:6px; }
+  .right .pips { justify-content:flex-end; }
+  .pips span { width:18px; height:18px; border-radius:50%; border:3px solid #fff; background:#0006; }
+  .pips span.on { background:var(--accent); }
+  .center { text-align:center; min-width:96px; }
+  #timer { font-size:40px; font-weight:900; line-height:1; text-shadow:0 3px 0 #000a; }
+  #roundLbl { font-size:13px; font-weight:800; opacity:.85; margin-top:2px; }
+  #msg { position:absolute; top:34%; left:0; right:0; text-align:center; opacity:0; transition:opacity .25s; }
+  #msg .big { font-size:clamp(48px,10vw,130px); font-weight:900; color:#fff; -webkit-text-stroke:5px #2a0f4a; paint-order:stroke fill; text-shadow:0 8px 0 #2a0f4a; }
+  #msg .sub { font-size:clamp(18px,3vw,32px); font-weight:800; text-shadow:0 3px 0 #000a; margin-top:6px; }
+  #msg.pop .big { animation:pop .35s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform:scale(.4); opacity:0; } to { transform:scale(1); opacity:1; } }
+  #flash { position:absolute; inset:0; opacity:0; transition:opacity .35s; background:radial-gradient(ellipse at center, #ff000000 40%, #ff1a1aee 100%); }
+  #ping { position:absolute; right:12px; bottom:10px; font-size:13px; opacity:.7; }
+  #controls { position:absolute; left:12px; bottom:10px; font-size:13px; line-height:1.8; background:#1b103899; padding:8px 12px; border-radius:12px; }
+  #lockHint { position:absolute; bottom:64px; left:50%; transform:translateX(-50%); background:#1b1038cc; border:3px solid #fff; padding:8px 16px; border-radius:12px; font-weight:800; }
+  #rematch { position:absolute; bottom:18%; left:50%; transform:translateX(-50%); }
+</style>
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="menu" class="screen">
+  <div class="card">
+    <h1>SKY BRAWL</h1>
+    <p class="tag">Duelo de puñetazos sobre las nubes</p>
+    <div class="row"><input id="name" type="text" maxlength="14" placeholder="Tu nombre" autocomplete="off"></div>
+    <div class="row">
+      <button class="alt arrow" id="prev">◀</button>
+      <canvas id="preview" width="260" height="320"></canvas>
+      <button class="alt arrow" id="next">▶</button>
+    </div>
+    <div id="skinName">Tito</div>
+    <div class="row"><button id="btnCreate">Crear sala</button></div>
+    <div class="row">
+      <input id="code" type="text" maxlength="4" placeholder="CÓDIGO" autocomplete="off">
+      <button class="alt" id="btnJoin">Unirse</button>
+    </div>
+    <div class="err" id="menuErr"></div>
+    <div class="help">
+      <kbd>WASD</kbd> mover · <kbd>Espacio</kbd> saltar · <kbd>Clic izq</kbd>/<kbd>der</kbd> golpes · <kbd>E</kbd> golpe fuerte<br>
+      <kbd>Q</kbd> bloquear (mantener) · <kbd>Shift</kbd> esquivar · <kbd>Ratón</kbd> cámara · <kbd>M</kbd> música
+    </div>
+  </div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <div class="card">
+    <h1>SALA</h1>
+    <div id="roomCode">----</div>
+    <div id="lobbyInfo" class="tag">Esperando al rival… Pásale el código o el enlace.</div>
+    <div id="roomLink"></div>
+    <div class="row">
+      <button id="btnCopy" class="alt">Copiar enlace</button>
+      <button id="btnLeave">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="bars">
+    <div class="side left">
+      <div class="name" id="n0"></div>
+      <div class="bar"><div class="trail" id="t0"></div><div class="fill" id="f0"></div></div>
+      <div class="pips" id="p0"><span></span><span></span></div>
+    </div>
+    <div class="center"><div id="timer">90</div><div id="roundLbl">RONDA 1</div></div>
+    <div class="side right">
+      <div class="name" id="n1"></div>
+      <div class="bar"><div class="trail" id="t1"></div><div class="fill" id="f1"></div></div>
+      <div class="pips" id="p1"><span></span><span></span></div>
+    </div>
+  </div>
+  <div id="msg"></div>
+  <div id="flash"></div>
+  <button id="rematch" class="hidden">Revancha</button>
+  <div id="lockHint" class="hidden">Haz clic para capturar el ratón (Esc para soltarlo)</div>
+  <div id="controls">
+    <kbd>WASD</kbd> mover · <kbd>Espacio</kbd> saltar · <kbd>Clic izq</kbd> jab · <kbd>Clic der</kbd> directo<br>
+    <kbd>E</kbd> fuerte · <kbd>Q</kbd> bloquear · <kbd>Shift</kbd> esquivar · <kbd>M</kbd> música
+  </div>
+  <div id="ping"></div>
+</div>
+
+<script type="module" src="/game.js"></script>
+</body>
+</html>
